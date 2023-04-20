@@ -12,4 +12,4 @@ trait Attribute {
     fn new(contents: T) -> Self;
 }
 */
-const a:i32 = 5;
+const A:i32 = 5;
