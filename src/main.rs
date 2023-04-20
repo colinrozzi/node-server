@@ -20,6 +20,7 @@ use tokio::net::{TcpListener, TcpStream};
 use std::env;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
+use tokio::sync::oneshot;
 use bytes::Bytes;
 use std::collections::HashMap;
 
@@ -37,32 +38,44 @@ async fn main() {
     let tx2 = tx.clone();
 
     let manager = tokio::spawn(async move {
-        let mut data = HashMap::new();
+        let mut data: HashMap<String, String> = HashMap::new();
 
         while let Some(cmd) = rx.recv().await {
             use Command::*;
 
             match cmd {
-                Get { key } => {
-                    data.get(&key);
+                Get { key, resp } => {
+                    let res = data.get(&key);
+                    let _ = resp.send(res.cloned());
                 }
-                Set { key, val } => {
-                    data.insert(key, val);
+                Set { key, val, resp } => {
+                    let res = data.insert(key, val);
+                    let _ = resp.send(res);
                 }
             }
         }
     });
+
+    let listener = TcpListener::bind(addr).await?;
+    let connection_listener = tokio::spawn(
+        // listen for incoming connections, delegate the messages to
+        // server or network depending on type
+    )
 }
 
 enum Command {
     Get {
         key: String,
+        resp: Responder<Option<String>>,
     },
     Set {
         key: String,
-        val: Bytes,
+        val: String,
+        resp: Responder<Option<String>>,
     }
 }
+
+type Responder<T> = oneshot::Sender<T>;
 
 /*
 fn network_process(addr: String) {
