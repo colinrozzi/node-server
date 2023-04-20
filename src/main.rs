@@ -16,50 +16,70 @@ First steps:
 #![allow(unused)]
 #![allow(dead_code )]
 
-use std::io::BufReader;
-use std::io::prelude::*;
-use std::fs;
-use std::iter::Map;
-use std::net::TcpStream;
-use std::sync::Arc;
-use std::time::Duration;
-use std::{net::TcpListener, thread};
-use std::sync::mpsc;
-use threadpool::ThreadPool;
-use quicli::prelude::*;
-use structopt::StructOpt;
+use tokio::net::{TcpListener, TcpStream};
 use std::env;
-use std::sync::mpsc::{Sender, Receiver};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc;
+use bytes::Bytes;
+use std::collections::HashMap;
 
 
-
-fn main() {
+#[tokio::main]
+async fn main() {
     let args: Vec<String> = env::args().collect();
 
     let port = &args[0];
     let neighbor = &args[1];
 
-    let addr = Arc::new(format!("127.0.0.1:{port}"));
+    let addr = format!("127.0.0.1:{port}");
 
-    let (tx, rx): (Sender<i32>, Receiver<i32>) = mpsc::channel();
-    let tx = Arc::new(Mutex::new(tx));
-    let rx = Arc::new(Mutex::new(rx));
+    let (tx, mut rx) = mpsc::channel(32);
+    let tx2 = tx.clone();
 
-    thread::spawn(|| {
-        listening_process(addr.clone(), tx, rx);
-    });
+    let manager = tokio::spawn(async move {
+        let mut data = HashMap::new();
 
-    thread::spawn(|| {
-        network_process(addr.clone(), tx, rx);
+        while let Some(cmd) = rx.recv().await {
+            use Command::*;
+
+            match cmd {
+                Get { key } => {
+                    data.get(&key);
+                }
+                Set { key, val } => {
+                    data.insert(key, val);
+                }
+            }
+        }
     });
 }
 
-fn network_process(addr: Arc<String>, tx:  Arc<Mutex<Sender<i32>>>, rx: Arc<Mutex<Receiver<i32>>>) {
+enum Command {
+    Get {
+        key: String,
+    },
+    Set {
+        key: String,
+        val: Bytes,
+    }
+}
+
+/*
+fn network_process(addr: String) {
     print!("{}", "hey, this is where the network process goes")
 }
 
-fn listening_process(addr: Arc<String>, tx: Arc<Mutex<Sender<i32>>>, rx: Arc<Mutex<Receiver<i32>>>) {
+async fn listening_process(addr: String) {
+
+    let listener = TcpListener::bind(addr).await.unwrap();
+
+    loop {
+        let (socket, _) = listener.accept().await.unwrap();
+        process(socket).await;
+    }
+}
+*/
+/*
 
     let n_workers = 4;
     let pool = ThreadPool::new(n_workers);
@@ -134,4 +154,5 @@ trait StateMachine {
 trait Attribute {
     fn new(contents: T) -> Self;
 }
+*/
 */
