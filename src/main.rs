@@ -1,4 +1,3 @@
-
 /*
 what I want to do:
 I want a node-server to be a connection to a network,
@@ -22,28 +21,33 @@ First steps:
 
 #![allow(unused_imports)]
 
-//use std::io::BufReader;
-//use std::io::prelude::*;
-//use std::fs;
-//use std::iter::Map;
-//use std::net::TcpStream;
-//use std::time::Duration;
-use std::{net::TcpListener, thread};
-use std::sync::mpsc;
+use std::{
+    net::{
+        TcpListener, 
+        TcpStream,
+    },
+    thread,
+    sync::mpsc,
+    env,
+    collections::HashMap,
+};
 use threadpool::ThreadPool;
-use std::env;
-use std::collections::HashMap;
 mod state_machine;
-use state_machine::*;
-//use std::sync::Arc;
-//use build_html::*;
-//use state_machine::*;
+mod general;
+mod actions;
+use crate::state_machine::follower::*;
+use crate::actions::request_handler::*;
 
 fn main() {
-    //thread - run the state machine on this thread
-    //thread - run some network logic on this thread
-    //for each incoming connection - delegate to a threadpool worker depending on type of connection
-    //     have a diff function for each type of request
+    /*
+    responsible for starting node and delegating running
+    starts state machine thread and state machine manager on that thread
+    initializes a threadpool
+    listens for connections and delegates evaluation of those to the threadpool
+     */
+
+    //---------------------------------------------
+    // set up state machine
     let args: Vec<String> = env::args().collect();
 
     let port = &args[1];
@@ -57,13 +61,17 @@ fn main() {
         run_state_machine(receiver);
     });
 
+    //---------------------------------------------
+    // set up threadpool
+
     let n_workers = 1;
     let pool = ThreadPool::new(n_workers);
     //listen for incoming connections, update sm as needed
-    println!("{}", addr);
-    let listener = TcpListener::bind(addr).unwrap();
 
-    println!("listening loop is running");
+    //---------------------------------------------
+    // start listening for connections and delegating
+    println!("{}", format!("listening loop is running on {}", addr.clone()));
+    let listener = TcpListener::bind(addr).unwrap();
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
@@ -76,8 +84,4 @@ fn main() {
     }
 
     println!("quitting");
-}
-
-fn handle_connection(stream: TcpStream, sender: mpsc::Sender<Option<Command>>) {
-    todo!;
 }

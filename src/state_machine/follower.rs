@@ -1,6 +1,7 @@
 use std::sync::mpsc;
 use std::net::TcpStream;
 use std::collections::HashMap;
+use crate::general::state_machine_types::*;
 
 pub enum Command {
     Get {
@@ -47,3 +48,4 @@ pub fn run_state_machine(receiver: mpsc::Receiver<Option<Command>>) {
         }
     }
 }
+
